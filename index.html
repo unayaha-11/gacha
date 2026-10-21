@@ -97,7 +97,7 @@ input,select,textarea{font:inherit;color:var(--ink);border:1px solid var(--line)
 .tb div{max-width:640px;margin:auto;display:flex}
 .tb button{flex:1;border:0;background:none;color:var(--mut);padding:12px 0 14px;border-radius:0}
 .tb button.on{color:var(--ink);font-weight:800}.tb button.on::before{content:'✦';display:block;color:var(--pink);font-size:18px;line-height:1}
-#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:999px;padding:6px 18px;display:none;z-index:10}
+#toast{position:fixed;left:50%;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;text-align:center;word-break:keep-all;white-space:pre-line;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:22px;padding:8px 18px;line-height:1.4;display:none;z-index:10}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
 .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
 .fp{font-family:Paperlogy,'Pretendard Variable',sans-serif}.fr{font-family:'Pretendard Variable',Pretendard,sans-serif}
@@ -637,6 +637,7 @@ async function persist(){if(!sb||!admin)return;if(SV){SV=2;return}SV=1;
  const again=SV===2;SV=0;if(again)persist()}
 const stripData=o=>JSON.parse(JSON.stringify(o,(k,v)=>typeof v==='string'&&/^data:image\//i.test(v)?'':v));
 const save=()=>{D=stripData(D);persist();return true};
+const errWhy=e=>String(e&&(e.message||e.name)||'알 수 없는 오류');
 function toast(t){const o=$('#toast');o.textContent=t;o.style.display='block';clearTimeout(o.t);o.t=setTimeout(()=>o.style.display='none',2200)}
 let CT=0;
 let GK='';
@@ -831,7 +832,12 @@ function openPV(c,a){PVC=c;PVA=a&&c.awake&&pvOK(c)?1:0;
 const pvOK=c=>admin||!!D.awPrev||!!AW[c.id],pvTabs=()=>PVC.awake?`<div class="seg"><button class="${PVA?'':'on'}" onclick="pvTab(0)">각성 전</button>${pvOK(PVC)?`<button class="${PVA?'on':''}" onclick="pvTab(1)">각성 후 ✦</button>`:`<button class="lc" onclick="pvTab(1)">🔒 각성 후</button>`}</div>`:'';
 function pvTab(a){if(a&&!pvOK(PVC))return toast('각성하기를 하면 볼 수 있어요');PVA=a;$('#pvc').innerHTML=`<div class="tl">${cardH(PVC,'rv',a)}</div>`;document.querySelectorAll('.pvm .seg button').forEach((b,i)=>b.classList.toggle('on',i===a))}
 function playCard(id,a){const c=D.cards.find(x=>SID(x.id,id));if(!c)return;openPV(c,a)}
-const LDI=u=>new Promise((res,rej)=>{const i=new Image();if(!/^data:/.test(u))i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=()=>rej(new Error('img'));i.src=u});
+const LDI=async u=>{const ld=(src,cors)=>new Promise((res,rej)=>{const i=new Image();if(cors)i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=()=>rej(new Error('img'));i.src=src});
+ if(/^(data|blob):/.test(u))return ld(u,0);
+ try{return await ld(u,1)}catch(e){}
+ try{return await ld(u+(u.includes('?')?'&':'?')+'_cb='+Date.now(),1)}catch(e){}
+ const r=await fetch(u,{mode:'cors',cache:'reload'}),b=await r.blob(),o=URL.createObjectURL(b);
+ try{return await ld(o,0)}finally{setTimeout(()=>URL.revokeObjectURL(o),10000)}};
 async function cardPNG(c,aw,bare,cwo){
  const X=hxOn(),k={...DC,...c.c},t=X?T0:(aw?c.ta:c.t)||T0,im=await LDI(X?hxImg():aw?c.awake:c.image);
  await Promise.all(['800 40px Paperlogy','700 40px Paperlogy','500 40px Paperlogy','700 40px Montserrat','800 40px "Pretendard Variable"'].map(f=>document.fonts.load(f).catch(()=>0)));
@@ -899,8 +905,10 @@ async function resPNG(r,M){
  const tw=x.measureText(tt).width;x.font=`500 ${30*k1*(one?2.2:1)}px ${fam}`;x.fillStyle='#a79eb5';x.fillText(M.sub||'',pad+tw+22,ty-4);
  const cache={};
  for(let i=0;i<r.length;i++){const it=r[i],c=it.c,col=i%cols,row=Math.floor(i/cols),cx=pad+col*(cw+gap),cy=top+row*(ch+lh+rg);
-  const key=String(c.id);if(!cache[key])cache[key]=await cardPNG(c,false,true,Math.round(cw*1.5));
-  x.save();x.shadowColor='rgba(110,80,155,.30)';x.shadowBlur=30;x.shadowOffsetY=10;x.imageSmoothingQuality='high';x.drawImage(cache[key],cx,cy,cw,ch);x.restore();
+  const key=String(c.id);if(!(key in cache)){try{cache[key]=await cardPNG(c,false,true,Math.round(cw*1.5))}catch(e){cache[key]=null;M.fail=(M.fail||0)+1}}
+  x.save();x.shadowColor='rgba(110,80,155,.30)';x.shadowBlur=30;x.shadowOffsetY=10;x.imageSmoothingQuality='high';
+  if(cache[key])x.drawImage(cache[key],cx,cy,cw,ch);else{x.fillStyle='#f1ecf7';x.beginPath();if(x.roundRect)x.roundRect(cx,cy,cw,ch,cw*.025);else x.rect(cx,cy,cw,ch);x.fill()}
+  x.restore();
   const fs=one?40:23,by=cy+ch+(one?64:46);x.textBaseline='alphabetic';
   x.font=`800 ${fs}px ${fam}`;x.letterSpacing=`${fs*.04}px`;const gt=c.grade||'',gw=x.measureText(gt).width,gx=cx+cw-4-gw;
   let gf=gcol(gt)[1];if(gt==='LR'){const lg=x.createLinearGradient(gx,0,gx+gw,0);['#ff7fbf','#ffb15e','#5fd6a0','#6bb8ff','#a98bff'].forEach((cc,q)=>lg.addColorStop(q/4,cc));gf=lg}
@@ -913,9 +921,9 @@ async function resPNG(r,M){
   x.fillText(nm,cx+4,by)}
  return new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('blob')),'image/png'))}
 async function saveRes(){if(!RS||!RS.length)return;toast('결과 이미지를 만드는 중이에요…');
- try{const bl=await resPNG(RS,RSM),url=URL.createObjectURL(bl),a=document.createElement('a'),d=new Date(),p=n=>String(n).padStart(2,'0');
-  a.href=url;a.download='가챠결과_'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('결과 이미지를 저장했어요')}
- catch(e){toast('이미지를 만들지 못했어요')}}
+ RSM.fail=0;try{const bl=await resPNG(RS,RSM),url=URL.createObjectURL(bl),a=document.createElement('a'),d=new Date(),p=n=>String(n).padStart(2,'0');
+  a.href=url;a.download='가챠결과_'+d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'.png';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast(RSM.fail?'저장했어요 (불러오지 못한 카드 '+RSM.fail+'장은 빈칸이에요)':'결과 이미지를 저장했어요')}
+ catch(e){(console.error(e),toast('이미지를 만들지 못했어요\n('+errWhy(e)+')'))}}
 async function saveImg(){const c=PVC,aw=PVA;if(!hxOn()&&!(aw?c.awake:c.image))return toast('먼저 사진을 넣어 주세요');
  toast('저장할 이미지를 만드는 중이에요…');
  try{const bl=await cardPNG(c,aw),url=URL.createObjectURL(bl),a=document.createElement('a');
@@ -928,7 +936,7 @@ async function dlCard(id,a){const c=D.cards.find(x=>SID(x.id,id));if(!c)return;c
  try{const bl=await cardPNG(c,aw),nm='gacha-card_'+String(c.title||c.name||'card').replace(/[\\/:*?"<>|]/g,'')+(aw?'_각성':'')+'.png',f=new File([bl],nm,{type:'image/png'});
   if(/iPad|iPhone|iPod/.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]});return}catch(e){if(e&&e.name==='AbortError')return}}
   const url=URL.createObjectURL(bl),el=document.createElement('a');el.href=url;el.download=nm;document.body.appendChild(el);el.click();el.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('이미지를 저장했어요')}
- catch(e){toast('이미지를 만들지 못했어요')}}
+ catch(e){(console.error(e),toast('이미지를 만들지 못했어요\n('+errWhy(e)+')'))}}
 function shareCard(id){const u=location.href.split('#')[0]+'#card='+encodeURIComponent(id);
  (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(()=>toast('링크를 복사했어요'),()=>prompt('링크를 복사해 주세요',u))}
 function editCard(id){const c=D.cards.find(x=>SID(x.id,id));cl();view='admin';if(c&&c.hid){tab='hid';HC=JSON.parse(JSON.stringify(c));hw=0;render();scrollTo(0,0)}else{tab='cards';edit(id)}}

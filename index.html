@@ -606,11 +606,11 @@ html.hx:not(.hxa) :is(h1,h2,h3,b,p,small,button,label):nth-child(3n+1){animation
 <script>
 window.addEventListener('error',e=>{const d=document.createElement('div');d.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#fff0f3;color:#b00020;border:1px solid #f4b;padding:10px;border-radius:10px;font:12px/1.4 monospace;word-break:break-all';d.textContent='오류: '+(e.message||e.error)+' ('+(e.lineno||'?')+')';document.body.appendChild(d)});
 window.addEventListener('unhandledrejection',e=>{const d=document.createElement('div');d.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#fff0f3;color:#b00020;border:1px solid #f4b;padding:10px;border-radius:10px;font:12px/1.4 monospace;word-break:break-all';d.textContent='오류: '+(e.reason&&e.reason.message||e.reason);document.body.appendChild(d)});
-function SL(){const r=localStorage,P=['gem','col','aw','pts','q','daily','qo','cpu'],S='ml1|'+location.hostname+'|',
+function SL(){let r;try{r=localStorage;r.setItem('_t','1');r.removeItem('_t')}catch(e){const m={};r={getItem:k=>k in m?m[k]:null,setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}};window.STO_BAD=1}const mm={},P=['gem','col','aw','pts','q','daily','qo','cpu'],S='ml1|'+location.hostname+'|',
 h=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}a=Math.imul(a^a>>>16,2246822507)^Math.imul(b^b>>>13,3266489909);b=Math.imul(b^b>>>16,2246822507)^Math.imul(a^a>>>13,3266489909);return(4294967296*(2097151&b)+(a>>>0)).toString(36)},
 sg=(k,v)=>h(S+k+'|'+v);
 try{if(r.getItem('_sg')!=='1'){P.forEach(k=>{const v=r.getItem(k);if(v!==null)r.setItem(k,v+'|'+sg(k,v))});r.setItem('_sg','1')}}catch(e){}
-return{getItem(k){const v=r.getItem(k);if(v===null||P.indexOf(k)<0)return v;const i=v.lastIndexOf('|');if(i<0)return null;const x=v.slice(0,i);return v.slice(i+1)===sg(k,x)?x:null},setItem(k,v){v=String(v);r.setItem(k,P.indexOf(k)<0?v:v+'|'+sg(k,v))},removeItem(k){r.removeItem(k)}}}
+return{getItem(k){const v=k in mm?mm[k]:r.getItem(k);if(v===null||P.indexOf(k)<0)return v;const i=v.lastIndexOf('|');if(i<0)return null;const x=v.slice(0,i);return v.slice(i+1)===sg(k,x)?x:null},setItem(k,v){v=String(v);const w=P.indexOf(k)<0?v:v+'|'+sg(k,v);try{r.setItem(k,w);delete mm[k]}catch(e){mm[k]=w;window.STO_BAD=1}},removeItem(k){delete mm[k];try{r.removeItem(k)}catch(e){}}}}
 const $=s=>document.querySelector(s),q=id=>E(JSON.stringify(String(id))),SID=(a,b)=>String(a)===String(b),LS=SL(),G=['N','R','SR','SSR','UR','LR'],ST=g=>'★'.repeat(G.indexOf(g)+1),fmt=n=>(+n||0).toLocaleString();
 const E=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const U=v=>E((v||'').startsWith('data:')?'':v),ld=(k,d)=>{try{return JSON.parse(LS.getItem(k))||d}catch(e){return d}};
@@ -619,12 +619,14 @@ const SB_URL='https://yaywysqyovvrxkxflvxa.supabase.co',SB_KEY='eyJhbGciOiJIUzI1
 const sb=(window.supabase&&SB_URL&&SB_KEY)?window.supabase.createClient(SB_URL,SB_KEY):null;
 let admin=false,view='home',tab='cards',editId=null,editB=null,F={image:'',awake:''},FB='',bi=0;
 let OW=ld('col',{}),AW=ld('aw',{}),PT=0,PTS=ld('pts',{});
-const gem=()=>{if(LS.getItem('gem')===null)LS.setItem('gem',D.eco.start);return+LS.getItem('gem')},setGem=v=>LS.setItem('gem',v);
+const gem=()=>{let v=LS.getItem('gem');if(v===null||v===''||!isFinite(+v)){LS.setItem('gem',isFinite(+D.eco.start)?+D.eco.start:9000);v=LS.getItem('gem')}return+v},setGem=v=>LS.setItem('gem',isFinite(+v)?+v:0);
 async function H(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return s}}
+const ECO0={start:9000,cost:300,cost10:3000,daily:600,awk:2,pity:80};
 async function load(){let d=null,codes={};
  if(sb){try{const r=await sb.from('site_data').select('id,data').in('id',admin?[1,2]:[1]);
   (r.data||[]).forEach(x=>{if(x.id===1)d=x.data;if(x.id===2)codes=(x.data&&x.data.codes)||{}})}catch(e){}}
  if(d&&Object.keys(d).length)D={...D,...d,eco:{...D.eco,...(d.eco||{})}};
+ Object.keys(ECO0).forEach(k=>{const v=D.eco[k];if(v===null||v===''||!isFinite(+v))D.eco[k]=ECO0[k]});
  if(Array.isArray(D.coupons))D.coupons=D.coupons.map(c=>codes[c.id]?{...c,code:codes[c.id]}:c);
  D=stripData(D);delete D.pass;delete D.cred;
  if(!Array.isArray(D.banners))D.banners=[];if(!Array.isArray(D.folders))D.folders=[];if(!Array.isArray(D.coupons))D.coupons=[];purgeExp();if(bi>=bs().length)bi=0;EXN=bs().length;render();openHash()}
@@ -1212,7 +1214,7 @@ function saveBn(){const t=$('#g-t').value.trim();if(!t)return toast('제목을 �
  save();toast('배너를 저장했어요');editB=null;FB='';render()}
 function editBn(id){const b=D.banners.find(x=>SID(x.id,id));editB=id;FB=b.image||'';render();scrollTo(0,0)}
 async function delBn(id){if(!await ask('이 배너를 삭제할까요?'))return;D.banners=D.banners.filter(b=>!SID(b.id,id));bi=0;save();render()}
-function saveS(){G.forEach(g=>D.weights[g]=Math.max(0,+$('#w-'+g).value||0));['start','cost','cost10','daily','pity','awk'].forEach(k=>D.eco[k]=Math.max(0,+$('#e-'+k).value||0));D.awPrev=!!$('#s-ap').checked;save();toast('저장했어요');render()}
+function saveS(){G.forEach(g=>D.weights[g]=Math.max(0,+$('#w-'+g).value||0));['start','cost','cost10','daily','pity','awk'].forEach(k=>{const v=$('#e-'+k).value;D.eco[k]=String(v).trim()===''?D.eco[k]:Math.max(0,+v||0)});D.awPrev=!!$('#s-ap').checked;save();toast('저장했어요');render()}
 const PM=new Map(),pcd=e=>e.target.closest&&e.target.closest('#pv .cd');let PD=0;
 
 document.addEventListener('pointerdown',e=>{if(!pcd(e))return;PM.set(e.pointerId,{x:e.clientX,y:e.clientY});if(PM.size===2){const[a,b]=[...PM.values()];PD=Math.hypot(a.x-b.x,a.y-b.y)}});
@@ -1239,7 +1241,14 @@ async function tiltAsk(){if(TL){TL=0;const st=document.documentElement.style;st.
  addEventListener('deviceorientation',e=>{if(!TL||e.gamma==null)return;const nx=c1(e.gamma/35),ny=c1(((e.beta||0)-40)/35);if(Math.abs(nx-ox)+Math.abs(ny-oy)>.02)wake();ox=nx;oy=ny;qu()});
  addEventListener('scroll',()=>{wake();qu()},{passive:true});
  ['pointermove','pointerdown'].forEach(n=>document.addEventListener(n,e=>{const c=e.target.closest&&e.target.closest('.cd');if(!c)return;const g=c.querySelector('.gl');if(!g)return;wake();const r=c.getBoundingClientRect();g.style.setProperty('--px',((e.clientX-r.left)/r.width*2-1).toFixed(3));g.style.setProperty('--py',((e.clientY-r.top)/r.height*2-1).toFixed(3))}))})();
-(async()=>{try{if(sb){const r=await sb.auth.getSession();admin=!!(r.data&&r.data.session)}}catch(e){}await load()})();
+function stoWarn(){if(!window.STO_BAD||document.getElementById('stow'))return;const d=document.createElement('div');d.id='stow';
+ d.style.cssText='position:fixed;left:10px;right:10px;top:calc(10px + env(safe-area-inset-top));z-index:9998;background:#fff;border:1px solid #ff9ec9;border-radius:14px;padding:12px 14px;box-shadow:0 6px 24px #0003;font-size:13px;line-height:1.5;color:#231a2e';
+ d.innerHTML='<b>이 브라우저에서는 재화와 컬렉션이 저장되지 않아요</b><br>밴드·카톡 같은 앱 안의 브라우저에서는 기록이 남지 않을 수 있어요. 크롬이나 사파리로 열어 주세요.<div style="display:flex;gap:8px;margin-top:10px"><button id="stoo" style="flex:1;border:0;border-radius:10px;padding:9px;background:#ff6fa8;color:#fff;font-weight:700">링크 복사</button><button id="stox" style="border:1px solid #ddd;border-radius:10px;padding:9px 14px;background:#fff">닫기</button></div>';
+ document.body.appendChild(d);
+ document.getElementById('stox').onclick=()=>d.remove();
+ document.getElementById('stoo').onclick=async()=>{const u=location.href;if(/Android/i.test(navigator.userAgent)){location.href='intent://'+location.host+location.pathname+location.search+'#Intent;scheme=https;package=com.android.chrome;end';return}
+  try{await navigator.clipboard.writeText(u);toast('링크를 복사했어요. 사파리나 크롬에 붙여넣어 주세요')}catch(e){prompt('이 주소를 복사해서 사파리나 크롬에서 열어 주세요',u)}}}
+(async()=>{try{if(sb){const r=await sb.auth.getSession();admin=!!(r.data&&r.data.session)}}catch(e){}await load();stoWarn()})();
 </script>
 </body>
 </html>
